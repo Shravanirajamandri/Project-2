@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+- job_name: banking-services
+  metrics_path: /actuator/prometheus
+  static_configs:
+  - targets:
+    - customer-service:8080
+    - account-service:8080
+    - transaction-service:8080
+    - payment-service:8080
+    - loan-service:8080

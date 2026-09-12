@@ -1,0 +1,11 @@
+namespace: banking
+imageRegistry: REPLACE_WITH_ECR
+imageTag: latest
+replicas: 2
+
+services:
+  customer-service: 8081
+  account-service: 8082
+  transaction-service: 8083
+  payment-service: 8084
+  loan-service: 8085

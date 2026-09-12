@@ -1,0 +1,11 @@
+- name: Banking DevOps practice
+  hosts: banking
+  tasks:
+    - name: Check Docker
+      command: docker --version
+      register: result
+      changed_when: false
+
+    - name: Display Docker version
+      debug:
+        var: result.stdout

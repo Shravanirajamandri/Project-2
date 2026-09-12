@@ -1,0 +1,52 @@
+{{- range $name, $port := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  replicas: {{ $.Values.replicas }}
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+      - name: {{ $name }}
+        image: "{{ $.Values.imageRegistry }}/{{ $name }}:{{ $.Values.imageTag }}"
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_URL
+          value: jdbc:postgresql://postgres:5432/banking
+        - name: DB_USERNAME
+          value: banking_user
+        - name: DB_PASSWORD
+          value: banking_pass
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  selector:
+    app: {{ $name }}
+  ports:
+  - port: {{ $port }}
+    targetPort: 8080
+{{- end }}

@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: banking-ingress
+  namespace: banking
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: banking.local
+    http:
+      paths:
+      - path: /customer
+        pathType: Prefix
+        backend:
+          service:
+            name: customer-service
+            port:
+              number: 8081
+      - path: /account
+        pathType: Prefix
+        backend:
+          service:
+            name: account-service
+            port:
+              number: 8082
+      - path: /transaction
+        pathType: Prefix
+        backend:
+          service:
+            name: transaction-service
+            port:
+              number: 8083
+      - path: /payment
+        pathType: Prefix
+        backend:
+          service:
+            name: payment-service
+            port:
+              number: 8084
+      - path: /loan
+        pathType: Prefix
+        backend:
+          service:
+            name: loan-service
+            port:
+              number: 8085

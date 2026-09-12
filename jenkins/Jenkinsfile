@@ -1,0 +1,116 @@
+pipeline {
+  agent any
+
+  parameters {
+    choice(name:'SERVICE',
+      choices:['all','customer-service','account-service','transaction-service','payment-service','loan-service'],
+      description:'Service to build')
+    string(name:'IMAGE_TAG', defaultValue:'', description:'Optional image tag')
+  }
+
+  environment {
+    AWS_REGION='us-east-1'
+    ECR_REGISTRY='REPLACE_WITH_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com'
+    IMAGE_TAG_FINAL="${params.IMAGE_TAG ?: BUILD_NUMBER}"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+
+    stage('Build and Test') {
+      steps {
+        sh '''
+          set -e
+          if [ "$SERVICE" = "all" ]; then
+            for d in services/*; do (cd "$d" && mvn -B clean test package); done
+          else
+            cd services/$SERVICE
+            mvn -B clean test package
+          fi
+        '''
+      }
+    }
+
+    stage('SonarQube') {
+      steps {
+        echo 'Configure SonarQube in Jenkins before enabling the real scan.'
+        // withSonarQubeEnv('sonarqube') { sh 'mvn sonar:sonar' }
+      }
+    }
+
+    stage('Trivy Filesystem Scan') {
+      steps {
+        sh 'trivy fs --severity HIGH,CRITICAL .'
+      }
+    }
+
+    stage('Docker Build') {
+      steps {
+        sh '''
+          set -e
+          if [ "$SERVICE" = "all" ]; then
+            for d in services/*; do
+              n=$(basename "$d")
+              docker build -t "$n:$IMAGE_TAG_FINAL" "$d"
+            done
+          else
+            docker build -t "$SERVICE:$IMAGE_TAG_FINAL" "services/$SERVICE"
+          fi
+        '''
+      }
+    }
+
+    stage('Trivy Image Scan') {
+      steps {
+        sh '''
+          if [ "$SERVICE" = "all" ]; then
+            for d in services/*; do
+              n=$(basename "$d")
+              trivy image --exit-code 1 --severity HIGH,CRITICAL "$n:$IMAGE_TAG_FINAL"
+            done
+          else
+            trivy image --exit-code 1 --severity HIGH,CRITICAL "$SERVICE:$IMAGE_TAG_FINAL"
+          fi
+        '''
+      }
+    }
+
+    stage('Push to ECR') {
+      when {
+        expression { return !env.ECR_REGISTRY.startsWith('REPLACE_') }
+      }
+      steps {
+        sh '''
+          set -e
+          aws ecr get-login-password --region "$AWS_REGION" |
+            docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+          if [ "$SERVICE" = "all" ]; then
+            for d in services/*; do
+              n=$(basename "$d")
+              docker tag "$n:$IMAGE_TAG_FINAL" "$ECR_REGISTRY/$n:$IMAGE_TAG_FINAL"
+              docker push "$ECR_REGISTRY/$n:$IMAGE_TAG_FINAL"
+            done
+          else
+            docker tag "$SERVICE:$IMAGE_TAG_FINAL" "$ECR_REGISTRY/$SERVICE:$IMAGE_TAG_FINAL"
+            docker push "$ECR_REGISTRY/$SERVICE:$IMAGE_TAG_FINAL"
+          fi
+        '''
+      }
+    }
+
+    stage('GitOps') {
+      steps {
+        echo 'Update image tag in the separate GitOps repository. Argo CD deploys the desired state.'
+      }
+    }
+  }
+
+  post {
+    always {
+      junit allowEmptyResults:true, testResults:'services/*/target/surefire-reports/*.xml'
+    }
+  }
+}

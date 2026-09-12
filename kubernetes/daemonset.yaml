@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-log-agent
+  namespace: banking
+spec:
+  selector:
+    matchLabels:
+      app: node-log-agent
+  template:
+    metadata:
+      labels:
+        app: node-log-agent
+    spec:
+      containers:
+      - name: agent
+        image: busybox:1.36
+        command: ["sh","-c","while true; do echo node-log-agent-running; sleep 60; done"]

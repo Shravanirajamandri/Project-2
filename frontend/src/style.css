@@ -1,0 +1,5 @@
+body{margin:0;font-family:Arial;background:#f4f6f8}
+main{max-width:1200px;margin:auto;padding:30px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:white;padding:18px;border-radius:12px;box-shadow:0 2px 8px #ddd}
+pre{white-space:pre-wrap;font-size:12px}

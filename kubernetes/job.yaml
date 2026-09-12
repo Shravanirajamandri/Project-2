@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: banking-reconciliation
+  namespace: banking
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: reconciliation
+        image: busybox:1.36
+        command: ["sh","-c","echo reconciliation started; sleep 3; echo reconciliation completed"]
